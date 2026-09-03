@@ -1,0 +1,474 @@
+// Social View Tracker — PostgreSQL data model.
+// Track publicly available engagement metrics for YouTube and Instagram content.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Platform {
+  YOUTUBE
+  INSTAGRAM
+  TIKTOK
+  X
+}
+
+enum ContentKind {
+  VIDEO
+  SHORT
+  LIVE
+  REEL
+  POST
+  TWEET
+  OTHER
+}
+
+// Describes where metrics came from:
+// OFFICIAL = documented platform API; WEB = labeled extraction of the public page.
+enum DataSource {
+  OFFICIAL
+  WEB
+}
+
+// Mirrors the statuses surfaced in the UI:
+// PROCESSING, COMPLETED, FAILED, UNAVAILABLE, RATE_LIMITED
+enum TrackStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  UNAVAILABLE
+  RATE_LIMITED
+}
+
+enum AlertKind {
+  VIEW_MILESTONE
+  VIEW_SPIKE
+  GROWTH_THRESHOLD
+  MANUAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  FIRED
+  PAUSED
+}
+
+enum WebhookEvent {
+  CONTENT_CHECKED
+  ALERT_FIRED
+  CONTENT_FAILED
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ApiKeyScope {
+  READ
+  WRITE
+  ADMIN
+}
+
+enum PlanId {
+  FREE
+  STARTER
+  PRO
+  TEAM
+}
+
+// ---------------------------------------------------------------------------
+// Accounts, workspaces, billing
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  image          String?
+  passwordHash   String?
+  googleId       String?   @unique
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  // Access level: USER is a regular dashboard user; ADMIN unlocks the
+  // admin controls (delete reels, system logs, suspicion review).
+  role           String    @default("USER")
+
+  contents       Content[]
+  snapshots      MetricSnapshot[]
+  alerts         ViewAlert[]
+  webhooks       Webhook[]
+  apiKeys        ApiKey[]
+  usage          Usage[]
+  membership     WorkspaceMember?
+  ownedWorkspace Workspace?
+  plan           UserPlan?
+  instagramAccounts InstagramAccount[]
+  instagramConnections InstagramConnection[]
+  reels          Reel[]
+  reelEvents     ReelEvent[]
+  apiRequestLogs ApiRequestLog[]
+
+  @@index([email])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @unique
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members WorkspaceMember[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id])
+  role        WorkspaceRole @default(MEMBER)
+  invitedEmail String?
+  status      String        @default("active") // active | invited
+  joinedAt    DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+model UserPlan {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  plan        PlanId   @default(FREE)
+  status      String   @default("active") // active | past_due | canceled | trialing
+  maxContent  Int      @default(10)
+  maxApiKeys  Int      @default(1)
+  checkIntervalMinutes Int @default(1440)
+  renewsAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([plan, status])
+}
+
+// ---------------------------------------------------------------------------
+// Tracked content and metric snapshots
+// ---------------------------------------------------------------------------
+
+model InstagramAccount {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  username        String
+  instagramUserId String?
+  accessToken     String
+  // Optional Facebook Login token with instagram_business_manage_insights for
+  // per-media plays/reach (official view counts for reels).
+  insightsAccessToken String?
+  // Optional `sessionid` cookie value from the account owner's own browser.
+  // Enables reading the account's media pages exactly as the logged-in owner
+  // sees them (Apify-style), labeled WEB/session — never used to bypass
+  // security, only to view the owner's own public data.
+  sessionCookie    String?
+  lastVerifiedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, username])
+  @@index([userId])
+}
+
+model Content {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  platform     Platform
+  kind         ContentKind  @default(OTHER)
+  externalId   String
+  url          String
+  title        String?
+  caption      String?
+  accountName  String?
+  thumbnailUrl String?
+  publishedAt  DateTime?
+
+  status       TrackStatus  @default(PROCESSING)
+  lastError    String?
+  lastCheckedAt DateTime?
+  source       DataSource?
+  views        BigInt?
+  likes        BigInt?
+  comments     BigInt?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  snapshots    MetricSnapshot[]
+  alerts       ViewAlert[]
+
+  @@unique([userId, platform, externalId])
+  @@index([userId, platform])
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@index([userId, views])
+  @@index([userId, accountName])
+}
+
+model MetricSnapshot {
+  id          String   @id @default(cuid())
+  contentId   String
+  content     Content  @relation(fields: [contentId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  platform    Platform
+  url         String
+  source      DataSource?
+  capturedAt  DateTime @default(now())
+  views       BigInt?
+  likes       BigInt?
+  comments    BigInt?
+
+  @@index([contentId, capturedAt])
+  @@index([userId, capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Alerts, webhooks, API keys, usage
+// ---------------------------------------------------------------------------
+
+model ViewAlert {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  contentId   String?
+  content     Content?    @relation(fields: [contentId], references: [id])
+  kind        AlertKind   @default(VIEW_MILESTONE)
+  label       String
+  config      Json        // { threshold: BigInt-ish number, lookbackHours: n }
+  status      AlertStatus @default(ACTIVE)
+  lastTriggeredAt DateTime?
+  firedCount  Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  deliveries  AlertDelivery[]
+
+  @@index([userId, status])
+}
+
+model AlertDelivery {
+  id         String    @id @default(cuid())
+  alertId    String
+  alert      ViewAlert @relation(fields: [alertId], references: [id])
+  channel    String    @default("email") // email | webhook
+  sentAt     DateTime  @default(now())
+  payload    Json
+  delivered  Boolean   @default(true)
+  error      String?
+}
+
+model Webhook {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  url       String
+  secret    String   // webhook signing secret
+  events    WebhookEvent[]
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, enabled])
+}
+
+model ApiKey {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  name       String
+  keyHash    String      @unique
+  prefix     String
+  scope      ApiKeyScope @default(READ)
+  lastUsedAt DateTime?
+  createdAt  DateTime    @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+model Usage {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  date             DateTime @db.Date
+  checksCount      Int      @default(0)
+  apiCallsCount    Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model JobRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  contentId  String?
+  url        String
+  status     String   // queued | processing | completed | failed | rate_limited | unavailable
+  error      String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Instagram Reels module (Clip Matrix)
+// ---------------------------------------------------------------------------
+//
+// Dedicated IG reel tracking: one row per reel per user, with point-in-time
+// view history, event/error logs, and API request logging for the admin view.
+// Metrics come exclusively from authorized Instagram/Meta API reads via a
+// connected OAuth account (see InstagramConnection) — never from scraping the
+// public web page.
+
+/// A Meta/Instagram OAuth connection. The access token is stored encrypted
+/// (AES-256-GCM with META_TOKEN_ENCRYPTION_KEY) and never returned to the
+/// browser — API surfaces only expose masked forms.
+model InstagramConnection {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instagramUserId      String
+  instagramUsername    String
+  accessTokenEncrypted String
+  tokenExpiresAt       DateTime?
+  scopes               String? // comma-separated granted scopes
+  isBusinessLinked     Boolean   @default(false)
+  lastVerifiedAt       DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  reels Reel[]
+
+  @@unique([userId, instagramUserId])
+  @@index([userId])
+}
+
+model Reel {
+  id              String           @id @default(cuid())
+  instagramReelId String // shortcode, e.g. C123456789 — no query params
+  instagramUrl    String // the URL the user submitted
+  normalizedUrl   String // canonical https://www.instagram.com/reel/<shortcode>/
+  // Resolved through the authorized workflow: the shortcode is decoded to the
+  // numeric Graph API media id and verified against the authorized account.
+  // NULL until a connected account has resolved it.
+  instagramMediaId   String?
+  username        String?
+  caption         String?
+  thumbnailUrl    String?
+
+  currentViews    Int               @default(0)
+  // NULL until the first successful official metric arrives. Once set, it is
+  // never re-based; views_gained = currentViews - initialViews.
+  initialViews    Int?
+  viewsGained     Int               @default(0)
+  // active | paused | failed | deleted | completed | pending_connection |
+  // pending_media_resolution | metric_unavailable
+  trackingStatus  String            @default("pending_connection")
+  lastCheckedAt   DateTime?
+
+  // The Meta/Instagram OAuth connection used to authorize metric reads.
+  connectedAccountId String?
+  connectedAccount   InstagramConnection? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+
+  // Retry/backoff and integrity bookkeeping
+  consecutiveErrors  Int           @default(0)
+  consecutiveIdentical Int         @default(0)
+  lastError         String?
+  lastSource        String? // instagram_api | null
+  flaggedForReview  Boolean        @default(false)
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history  ReelViewHistory[]
+  events   ReelEvent[]
+
+  @@unique([userId, instagramReelId])
+  @@index([userId, trackingStatus])
+  @@index([userId, lastCheckedAt])
+  @@index([userId, createdAt])
+  @@index([userId, currentViews])
+  @@index([connectedAccountId])
+}
+
+/// One row per obtained metric call (successful view counts and honest
+/// unavailable snapshots). `viewCount` is NULL for metric_unavailable records.
+model ReelViewHistory {
+  id            String   @id @default(cuid())
+  reelId        String
+  reel          Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  viewCount     Int?
+  checkedAt     DateTime @default(now())
+  source        String? // instagram_api | null
+  previousViewCount Int?
+  // eventType: normal | metric_correction | suspicious_jump | repeated_response | missing_metrics
+  eventType     String   @default("normal")
+  flagged       Boolean  @default(false)
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([reelId, checkedAt])
+}
+
+/// Per-reel audit trail: successful refreshes, provider errors, suspicion
+/// flags, and status changes. Powers the admin "API errors / tracking
+/// failures / system logs" views.
+model ReelEvent {
+  id        String   @id @default(cuid())
+  reelId    String
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String   // refresh | error | flag | status_change | created
+  message   String
+  meta      String? // optional JSON payload
+  createdAt DateTime @default(now())
+
+  @@index([reelId, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Lightweight request log for reels API traffic (admin diagnostics).
+model ApiRequestLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  method    String
+  path      String
+  status    Int
+  durationMs Int
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+}

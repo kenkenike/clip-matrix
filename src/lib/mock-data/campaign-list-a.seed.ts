@@ -1,0 +1,118 @@
+import type { CampaignSeedInput } from "@/lib/mock-data/campaign-types.seed";
+
+export const campaignSeedsA: CampaignSeedInput[] = [
+  {
+    id: "nova-podcast",
+    brandId: "brand-northbeam",
+    brandName: "Northbeam Labs",
+    name: "Nova Podcast",
+    category: "Podcast",
+    status: "ACTIVE",
+    daysRemaining: 14,
+    endsAt: "2026-09-08T23:59:00Z",
+    ratePer100kMinor: 2_500,
+    budgetMinor: 1_000_000,
+    spentPct: 0.62,
+    platforms: ["tiktok", "instagram", "youtube"],
+    creatorCount: 214,
+    description:
+      "Clip the best moments from the Nova Podcast back catalog. Hot takes, wild stories, and quotable exchanges engineered to stop the scroll.",
+    rulesSummary:
+      "Keep clips under 60s. Include the episode title on screen. No political segment cuts.",
+  },
+  {
+    id: "alpha-arena",
+    brandId: "brand-hexforge",
+    brandName: "Hexforge Games",
+    name: "Alpha Arena",
+    category: "Gaming",
+    status: "ACTIVE",
+    daysRemaining: 21,
+    endsAt: "2026-09-15T23:59:00Z",
+    ratePer100kMinor: 5_000,
+    budgetMinor: 2_500_000,
+    spentPct: 0.48,
+    platforms: ["tiktok", "youtube", "x"],
+    creatorCount: 341,
+    description:
+      "Turn Alpha Arena gameplay into clutch montages, fail compilations, and hot-drop tutorials ahead of the season two launch.",
+    rulesSummary:
+      "Season two gameplay footage only. Tag #AlphaArenaS2. No cheats or exploits on camera.",
+  },
+  {
+    id: "lumen-sessions",
+    brandId: "brand-lumen",
+    brandName: "Lumen Audio",
+    name: "Lumen Sessions",
+    category: "Music",
+    status: "ACTIVE",
+    daysRemaining: 30,
+    endsAt: "2026-09-24T23:59:00Z",
+    ratePer100kMinor: 3_000,
+    budgetMinor: 1_500_000,
+    spentPct: 0.35,
+    platforms: ["instagram", "youtube", "tiktok"],
+    creatorCount: 128,
+    description:
+      "Re-cut live session performances into vertical highlight reels synced to the drop of each new single.",
+    rulesSummary:
+      "Audio must be the official master. Visualizer overlay required on the first three seconds.",
+  },
+  {
+    id: "statline-sync",
+    brandId: "brand-statline",
+    brandName: "Statline",
+    name: "Statline Sync",
+    category: "SaaS",
+    status: "ACTIVE",
+    daysRemaining: 45,
+    endsAt: "2026-10-09T23:59:00Z",
+    ratePer100kMinor: 4_000,
+    budgetMinor: 1_200_000,
+    spentPct: 0.22,
+    platforms: ["tiktok", "youtube", "x"],
+    creatorCount: 86,
+    description:
+      "Explain Statline workflows in thirty-second screen recordings that make operations teams say they needed this yesterday.",
+    rulesSummary:
+      "Screen recordings must use the sandbox workspace. No pricing claims or competitor comparisons.",
+  },
+  {
+    id: "cartel-drop-04",
+    brandId: "brand-cartel",
+    brandName: "Cartel Supply",
+    name: "Cartel Drop 04",
+    category: "Ecommerce",
+    status: "ENDING_SOON",
+    daysRemaining: 3,
+    endsAt: "2026-08-28T23:59:00Z",
+    ratePer100kMinor: 6_000,
+    budgetMinor: 2_000_000,
+    spentPct: 0.81,
+    platforms: ["tiktok", "instagram"],
+    creatorCount: 402,
+    description:
+      "Unbox, style, and hype Drop 04 streetwear pieces. The highest payout rate we have ever listed, with only days left.",
+    rulesSummary:
+      "Product must be visible within the first two seconds. Link sticker required on story re-posts.",
+  },
+  {
+    id: "ledger-lessons",
+    brandId: "brand-orbit",
+    brandName: "Orbit Agency",
+    name: "Ledger Lessons",
+    category: "Finance",
+    status: "ACTIVE",
+    daysRemaining: 28,
+    endsAt: "2026-09-22T23:59:00Z",
+    ratePer100kMinor: 3_500,
+    budgetMinor: 1_800_000,
+    spentPct: 0.44,
+    platforms: ["tiktok", "youtube", "x"],
+    creatorCount: 157,
+    description:
+      "Break down personal finance concepts using Ledger Lessons curriculum. Clear, compliant, and genuinely useful.",
+    rulesSummary:
+      "No specific tickers. Disclaimer card required. Scripts covering regulated claims are pre-approved only.",
+  },
+];

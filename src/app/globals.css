@@ -1,0 +1,371 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0a;
+  --color-surface: #121212;
+  --color-surface-alt: #0c0c0c;
+  --color-elevated: #161616;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-strong: rgba(255, 255, 255, 0.18);
+  --color-fg: #ffffff;
+  --color-muted: #d9d9d9;
+  --color-faint: #8a8a90;
+  --color-accent: #ebc594;
+  --color-accent-hover: #f3d6b0;
+  --color-accent-dim: rgba(235, 197, 148, 0.14);
+
+  --font-heading: var(--font-garamond), ui-serif, Georgia, serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0a0a;
+  color: #ffffff;
+  font-weight: 200;
+}
+
+::selection {
+  background: rgba(235, 197, 148, 0.32);
+  color: #ffffff;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 2px solid #0a0a0a;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #3f3f3f;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+}
+
+.radial-glow {
+  background:
+    radial-gradient(700px circle at 15% 20%, rgba(235, 197, 148, 0.09), transparent 55%),
+    radial-gradient(900px circle at 85% 10%, rgba(235, 197, 148, 0.05), transparent 60%);
+}
+
+.text-glow-accent {
+  text-shadow: 0 0 32px rgba(235, 197, 148, 0.45);
+}
+
+.card-hover-lift {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-3px);
+  border-color: rgba(235, 197, 148, 0.35);
+  box-shadow: 0 12px 40px -12px rgba(235, 197, 148, 0.18), 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(235, 197, 148, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(235, 197, 148, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(235, 197, 148, 0);
+  }
+}
+.pulse-dot {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-success-pop {
+  animation: success-pop 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes shimmer-bar {
+  from {
+    width: 4%;
+  }
+  to {
+    width: 100%;
+  }
+}
+.animate-upload-progress {
+  animation: shimmer-bar 1.8s cubic-bezier(0.3, 0.9, 0.4, 1) forwards;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(235, 197, 148, 0.7);
+  outline-offset: 2px;
+}
+
+/* Reference-style nav underline reveal (Memory Lab nav language) */
+.nav-link:after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(235, 197, 148, 0.6);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-link:hover:after {
+  transform: scaleX(1);
+}
+
+/* Reference-style hero title blur-fade (Memory Lab signature) */
+@keyframes blur-text {
+  0%,
+  55% {
+    filter: blur(0px);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    filter: blur(4px);
+    opacity: 0.6;
+  }
+}
+.hero-blur-fade {
+  animation: blur-text 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================================
+   Memory Lab-inspired layered ambient background
+   Reproduction of the reference's atmospheric language:
+   near-black base + a single warm parchment accent (#EBC594)
+   breathing through soft blurred glows. Sits behind all content
+   (z-0, siblings render above), never intercepts pointer events,
+   GPU-friendly transform/opacity only.
+   ============================================================ */
+
+/* 2. Soft radial gradients over the base -- warm top bias,
+      cool counterpoint at the foot for gentle depth */
+.bg-radial-gradients {
+  background:
+    radial-gradient(70rem circle at 15% 12%, rgba(235, 197, 148, 0.06), transparent 62%),
+    radial-gradient(50rem circle at 85% 8%, rgba(235, 197, 148, 0.045), transparent 60%),
+    radial-gradient(90rem circle at 50% 110%, rgba(10, 10, 10, 0.6), transparent 72%);
+}
+
+/* 3. Ambient glow orbs (the reference's signature: soft blurred
+      circles bleeding off corners, gently breathing) -- warm
+      parchment accent dominant, faint variants for depth only */
+.ambient-glow {
+  position: absolute;
+  width: 46rem;
+  height: 46rem;
+  border-radius: 9999px;
+  filter: blur(96px);
+  opacity: 0.4;
+  animation: ambient-breathe 15s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+.bg-base-glow {
+  background: radial-gradient(circle, rgba(235, 197, 148, 0.18), transparent 70%);
+  animation-duration: 12s;
+}
+.bg-teal-glow {
+  background: radial-gradient(circle, rgba(235, 205, 168, 0.1), transparent 70%);
+  animation-delay: 2s;
+  animation-duration: 18s;
+}
+.bg-violet-glow {
+  background: radial-gradient(circle, rgba(235, 197, 148, 0.09), transparent 72%);
+  animation-delay: 4s;
+  animation-duration: 16s;
+}
+
+/* 3b. Blurred light fields (wide, low-intensity drifting bands
+      adding a cinematic glow bloom behind the hero area) */
+.ambient-field {
+  position: absolute;
+  width: 70rem;
+  height: 40rem;
+  border-radius: 9999px;
+  filter: blur(140px);
+  opacity: 0.3;
+  will-change: opacity, transform;
+}
+.field-a {
+  top: -12rem;
+  left: -10rem;
+  background: linear-gradient(100deg, rgba(243, 214, 176, 0.16), transparent 70%);
+  animation: field-drift 26s ease-in-out infinite;
+}
+.field-b {
+  bottom: -14rem;
+  right: -12rem;
+  background: linear-gradient(280deg, rgba(235, 197, 148, 0.12), transparent 72%);
+  animation: field-drift 30s ease-in-out 4s infinite reverse;
+}
+
+/* 4. Fine grain / noise overlay (very subtle, adds archival
+      texture without reducing readability) */
+.ambient-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+  opacity: 0.45;
+}
+
+/* 5. Floating particles (fine warm motes, drifting) */
+.ambient-particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(250, 240, 228, 0.95);
+  opacity: var(--p-opacity, 0.4);
+  box-shadow: 0 0 6px rgba(235, 197, 148, 0.7), 0 0 12px rgba(235, 197, 148, 0.35);
+  animation: particle-float var(--p-duration, 18s) ease-in-out var(--p-delay, 0s) infinite;
+  will-change: opacity, transform;
+}
+
+/* Keyframes -- all transform/opacity only (GPU friendly) */
+@keyframes ambient-breathe {
+  0%,
+  100% {
+    opacity: 0.26;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.07);
+  }
+}
+
+@keyframes field-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2vw, 2vh, 0) scale(1.05);
+  }
+}
+
+@keyframes particle-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: calc(var(--p-opacity, 0.4) * 0.5);
+  }
+  50% {
+    transform: translate3d(var(--p-drift, 100px), -28px, 0);
+    opacity: var(--p-opacity, 0.4);
+  }
+}
+
+/* 6. Matrix rain -- falling math/Greek symbols behind content */
+.matrix-col {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: matrix-fall var(--speed, 20s) linear infinite;
+  will-change: transform;
+}
+.matrix-char {
+  font-family: var(--font-mono), "Courier New", monospace;
+  line-height: 1.4;
+  color: rgba(235, 197, 148, 0.7);
+  text-shadow: 0 0 8px rgba(235, 197, 148, 0.5);
+  user-select: none;
+}
+
+@keyframes matrix-fall {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(110vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-glow,
+  .ambient-field,
+  .ambient-particle,
+  .hero-blur-fade,
+  .matrix-col {
+    animation: none;
+  }
+  .ambient-grain {
+    mix-blend-mode: normal;
+  }
+}

@@ -1,0 +1,462 @@
+// Clipwave data model - documentation schema.
+// This schema documents the production data model behind the mock services in
+// src/lib/services/. It is NOT wired to a database and no migrations have run.
+// When real persistence lands: set DATABASE_URL, run `prisma migrate dev`,
+// then swap each service implementation in src/lib/services/index.ts for a
+// Prisma-backed one that fulfills the same interfaces in
+// src/lib/services/types.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CREATOR
+  BRAND
+  ADMIN
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  ENDING_SOON
+  PAUSED
+  COMPLETED
+}
+
+enum ClipStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  FLAGGED
+  PAID
+}
+
+enum PayoutMethodType {
+  PAYPAL
+  BANK_TRANSFER
+  STRIPE
+  USDC
+  USDT
+}
+
+enum PayoutMethodStatus {
+  ACTIVE
+  PENDING
+  FAILED
+}
+
+enum PayoutStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TransactionKind {
+  EARNING
+  BONUS
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum SocialPlatform {
+  TIKTOK
+  INSTAGRAM
+  YOUTUBE
+  X
+}
+
+enum SocialConnectionStatus {
+  NOT_CONNECTED
+  CONNECTING
+  VERIFIED
+  EXPIRED
+}
+
+enum FraudRisk {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FraudSignal {
+  VIEW_VELOCITY
+  ENGAGEMENT_VELOCITY
+  FOLLOWER_VIEW_RATIO
+  DUPLICATE_CONTENT
+  BOT_LIKE_ENGAGEMENT
+  PLATFORM_API_VERIFICATION
+}
+
+enum ModerationAction {
+  APPROVED
+  REJECTED
+  FLAGGED
+  CHANGES_REQUESTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  avatarUrl     String?
+  passwordHash  String
+  role          UserRole  @default(CREATOR)
+  onboarded     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  creatorProfile CreatorProfile?
+  brandProfile   BrandProfile?
+  socialAccounts SocialAccount[]
+  clips          Clip[]
+  earnings       Earning[]
+  payouts        Payout[]
+  transactions   Transaction[]
+  notifications  Notification[]
+  teamMemberships TeamMember[]
+  auditLogs      AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model CreatorProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  headline       String
+  bio            String
+  followerTotal  BigInt
+  lifetimeViews  BigInt
+  lifetimePaidMinor BigInt @default(0)
+  rating         Float    @default(0)
+  campaignsCompleted Int  @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  creatorCampaigns CreatorCampaign[]
+}
+
+model BrandProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  companyName String
+  logoUrl     String?
+  websiteUrl  String?
+  industry    String?
+  about       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teams       Team[]
+  campaigns   Campaign[]
+  subscription Subscription?
+}
+
+model SocialAccount {
+  id              String                 @id @default(cuid())
+  userId          String
+  user            User                   @relation(fields: [userId], references: [id])
+  platform        SocialPlatform
+  handle          String
+  externalId      String?
+  followers       Int                    @default(0)
+  status          SocialConnectionStatus @default(NOT_CONNECTED)
+  accessTokenRef  String? // reference into a secrets vault, never raw tokens
+  connectedAt     DateTime?
+  lastSyncedAt    DateTime?
+
+  @@unique([userId, platform])
+  @@index([status])
+}
+
+model Campaign {
+  id            String         @id @default(cuid())
+  brandId       String
+  brand         BrandProfile   @relation(fields: [brandId], references: [id])
+  title         String
+  slug          String         @unique
+  category      String
+  description   String
+  thumbnailUrl  String?
+  status        CampaignStatus @default(DRAFT)
+  ratePer100kViewsMinor Int
+  budgetMinor   Int
+  spentMinor    Int            @default(0)
+  maxPayoutMinor Int
+  minViews      Int
+  durationDays  Int
+  startsAt      DateTime
+  endsAt        DateTime
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  rules         CampaignRules?
+  content       CampaignContent[]
+  participants  CreatorCampaign[]
+  clips         Clip[]
+  spendHistory  SpendEntry[]
+  moderationReviews ModerationReview[]
+
+  @@index([status, endsAt])
+  @@index([category])
+  @@index([brandId])
+}
+
+model CampaignRules {
+  id               String   @id @default(cuid())
+  campaignId       String   @unique
+  campaign         Campaign @relation(fields: [campaignId], references: [id])
+  allowedPlatforms SocialPlatform[]
+  requiredHashtags String[]
+  requiredMentions String[]
+  requiredPhrases  String[]
+  prohibitedContent String[]
+  minFollowerTier  String
+  maxClipsPerCreator Int    @default(3)
+  paymentTerms     String
+  submissionNotes  String
+}
+
+model CampaignContent {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  kind       String // video | audio | image | doc
+  name       String
+  url        String
+  sizeBytes  BigInt
+  order      Int      @default(0)
+
+  @@index([campaignId])
+}
+
+model CreatorCampaign {
+  id         String   @id @default(cuid())
+  creatorId  String
+  creator    CreatorProfile @relation(fields: [creatorId], references: [id])
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  joinedAt   DateTime @default(now())
+  clipsSubmitted Int @default(0)
+  viewsDriven BigInt @default(0)
+  earnedMinor Int    @default(0)
+
+  @@unique([creatorId, campaignId])
+  @@index([campaignId])
+}
+
+model Clip {
+  id          String     @id @default(cuid())
+  creatorId   String
+  creator     User       @relation(fields: [creatorId], references: [id])
+  campaignId  String
+  campaign    Campaign   @relation(fields: [campaignId], references: [id])
+  platform    SocialPlatform
+  postUrl     String
+  caption     String?
+  status      ClipStatus @default(SUBMITTED)
+  views       BigInt     @default(0)
+  likes       BigInt     @default(0)
+  comments    BigInt     @default(0)
+  shares      BigInt     @default(0)
+  earnedMinor Int        @default(0)
+  submittedAt DateTime   @default(now())
+  reviewedAt  DateTime?
+  paidAt      DateTime?
+
+  metricsHistory ClipMetric[]
+  fraudFlags     FraudFlag[]
+
+  @@index([creatorId, status])
+  @@index([campaignId])
+  @@index([submittedAt])
+}
+
+model ClipMetric {
+  id        String   @id @default(cuid())
+  clipId    String
+  clip      Clip     @relation(fields: [clipId], references: [id])
+  capturedAt DateTime @default(now())
+  views     BigInt
+  likes     BigInt
+  comments  BigInt
+  shares    BigInt
+
+  @@index([clipId, capturedAt])
+}
+
+model ClipSubmission {
+  id         String   @id @default(cuid())
+  clipId     String
+  clip       Clip     @relation(fields: [clipId], references: [id]) @deprecated("Superseded by Clip.status; retained for audit trail")
+  submittedAt DateTime @default(now())
+  notes      String?
+}
+
+model Earning {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  clipId     String?
+  amountMinor Int
+  status     String // available | pending | withdrawn
+  accruedAt  DateTime  @default(now())
+  payableAt  DateTime
+
+  @@index([userId, status])
+}
+
+model Payout {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id])
+  methodType     PayoutMethodType
+  methodLabel    String // masked identifier e.g. "**** 4821"
+  amountMinor    Int
+  status         PayoutStatus     @default(PROCESSING)
+  reference      String?
+  requestedAt    DateTime         @default(now())
+  completedAt    DateTime?
+
+  @@index([userId, status])
+}
+
+model PayoutMethod {
+  id         String           @id @default(cuid())
+  userId     String
+  type       PayoutMethodType
+  label      String
+  maskedId   String
+  isDefault  Boolean          @default(false)
+  status     PayoutMethodStatus @default(ACTIVE)
+  createdAt  DateTime         @default(now())
+}
+
+model Transaction {
+  id         String          @id @default(cuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id])
+  kind       TransactionKind
+  description String
+  amountMinor Int // signed: positive credits, negative debits
+  balanceAfterMinor Int
+  occurredAt DateTime        @default(now())
+
+  @@index([userId, occurredAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+model Team {
+  id            String       @id @default(cuid())
+  brandId       String
+  brand         BrandProfile @relation(fields: [brandId], references: [id])
+  name          String
+  seatsLimit    Int          @default(5)
+  createdAt     DateTime     @default(now())
+
+  members TeamMember[]
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id])
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id])
+  email  String
+  role   String // owner | admin | analyst
+  status String // active | invited
+  invitedAt DateTime @default(now())
+
+  @@unique([teamId, email])
+}
+
+model ModerationReview {
+  id          String           @id @default(cuid())
+  clipId      String
+  clip        Clip             @relation(fields: [clipId], references: [id])
+  campaignId  String
+  campaign    Campaign         @relation(fields: [campaignId], references: [id])
+  reviewerId  String
+  action      ModerationAction
+  reasonCode  String?
+  notes       String?
+  decidedAt   DateTime         @default(now())
+
+  @@index([decidedAt])
+  @@index([action])
+}
+
+model FraudFlag {
+  id          String      @id @default(cuid())
+  clipId      String
+  clip        Clip        @relation(fields: [clipId], references: [id])
+  risk        FraudRisk
+  score       Int // 0-100 composite; scoring details are internal
+  signals     FraudSignal[]
+  summary     String
+  resolved    Boolean     @default(false)
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([resolved])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String
+  targetTable String
+  targetId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model Subscription {
+  id       String       @id @default(cuid())
+  brandId  String       @unique
+  brand    BrandProfile @relation(fields: [brandId], references: [id])
+  tier     String // starter | growth | scale
+  priceMonthlyMinor Int
+  status   String // active | past_due | canceled
+  renewsAt DateTime
+
+  invoices Invoice[]
+}
+
+model Invoice {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  number         String       @unique
+  amountMinor    Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  paidAt         DateTime?
+  pdfUrl         String?
+}
