@@ -172,6 +172,70 @@ function SubmitWizard({
     }
 
     // Non-Instagram: use mock detection
+    if (platform === "youtube") {
+      try {
+        const res = await fetch("/api/youtube/insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setUrlError(data.error ?? "Invalid YouTube URL");
+          setChecking(false);
+          return;
+        }
+
+        // Poll for result (YouTube API is fast but still async)
+        setScrapeStatus("Fetching from YouTube API...");
+        pollCountRef.current = 0;
+        pollRef.current = setInterval(async () => {
+          pollCountRef.current++;
+          try {
+            const pollRes = await fetch(`/api/youtube/insights/${data.jobId}`);
+            const job = await pollRes.json();
+
+            if (job.status === "completed" && job.result) {
+              stopPolling();
+              const r = job.result;
+              setMetrics({
+                platform: "youtube",
+                views: r.views ?? 0,
+                likes: r.likes ?? 0,
+                comments: r.comments ?? 0,
+                shares: 0,
+                postedAt: r.publishedAt ?? new Date().toISOString(),
+                accountHandle: r.channelTitle ?? "",
+              });
+              setStep(2);
+              setChecking(false);
+            } else if (job.status === "failed") {
+              stopPolling();
+              setUrlError(job.error ?? "Fetch failed — check the URL");
+              setChecking(false);
+            } else {
+              setScrapeStatus("Fetching from YouTube API...");
+            }
+
+            if (pollCountRef.current >= 20) {
+              stopPolling();
+              setUrlError("Request timed out — try again");
+              setChecking(false);
+            }
+          } catch {
+            stopPolling();
+            setUrlError("Lost connection while fetching");
+            setChecking(false);
+          }
+        }, 800);
+      } catch {
+        setUrlError("Could not reach server");
+        setChecking(false);
+      }
+      return;
+    }
+
+    // TikTok / X: use mock detection
     try {
       const valid = await socialPlatformService.validateUrl(url.trim(), platform);
       if (!valid) {
@@ -275,7 +339,13 @@ function SubmitWizard({
             id="clip-url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder={`https://www.${platform ?? "tiktok"}.com/@you/video/...`}
+            placeholder={
+              platform === "youtube"
+                ? "https://www.youtube.com/watch?v=... or youtu.be/..."
+                : platform === "instagram"
+                  ? "https://www.instagram.com/reel/..."
+                  : `https://www.${platform ?? "tiktok"}.com/@you/video/...`
+            }
             disabled={checking}
           />
           <FieldError message={urlError} />
@@ -288,7 +358,9 @@ function SubmitWizard({
           <p className="mt-2 text-xs text-faint">
             {platform === "instagram"
               ? "We scrape public engagement data directly from Instagram — no screenshots needed."
-              : "We fetch public metrics automatically - no screenshots needed."}
+              : platform === "youtube"
+                ? "We pull views, likes, and comments via the YouTube Data API — no screenshots needed."
+                : "We fetch public metrics automatically - no screenshots needed."}
           </p>
         </div>
       )}
