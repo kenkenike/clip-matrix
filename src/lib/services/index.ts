@@ -1,10 +1,10 @@
-import { MockCampaignService } from "@/lib/services/mock/campaigns.mock";
-import { MockCreatorService } from "@/lib/services/mock/creators.mock";
-import { MockBrandService } from "@/lib/services/mock/brands.mock";
-import { MockAnalyticsService } from "@/lib/services/mock/analytics.mock";
-import { MockPaymentService } from "@/lib/services/mock/payments.mock";
-import { MockSocialPlatformService } from "@/lib/services/mock/social.mock";
-import { MockAdminService } from "@/lib/services/mock/admin.mock";
+import { InsforgeCampaignService } from "@/lib/services/insforge/campaigns";
+import { InsforgeCreatorService } from "@/lib/services/insforge/creators";
+import { InsforgeBrandService } from "@/lib/services/insforge/brands";
+import { InsforgeAnalyticsService } from "@/lib/services/insforge/analytics";
+import { InsforgePaymentService } from "@/lib/services/insforge/payments";
+import { MockSocialPlatformService } from "@/lib/services/insforge/social";
+import { InsforgeAdminService } from "@/lib/services/insforge/admin";
 import { MockAuthService } from "@/lib/services/auth";
 import type {
   AdminService,
@@ -16,11 +16,11 @@ import type {
   SocialPlatformService,
 } from "@/lib/services/types";
 
-export const campaignService: CampaignService = new MockCampaignService();
-export const creatorService: CreatorService = new MockCreatorService();
-export const brandService: BrandService = new MockBrandService();
-export const analyticsService: AnalyticsService = new MockAnalyticsService();
-export const paymentService: PaymentService = new MockPaymentService();
+export const campaignService: CampaignService = new InsforgeCampaignService();
+export const creatorService: CreatorService = new InsforgeCreatorService();
+export const brandService: BrandService = new InsforgeBrandService();
+export const analyticsService: AnalyticsService = new InsforgeAnalyticsService();
+export const paymentService: PaymentService = new InsforgePaymentService();
 export const socialPlatformService: SocialPlatformService = new MockSocialPlatformService();
-export const adminService: AdminService = new MockAdminService();
+export const adminService: AdminService = new InsforgeAdminService();
 export const authService = new MockAuthService();

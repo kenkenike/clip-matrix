@@ -19,28 +19,28 @@ interface AccountRecord extends SessionUser {
 
 const accounts: AccountRecord[] = [
   {
-    id: "usr-admin-01",
+    id: "a0000000-0000-0000-0000-000000000001",
     name: "Kaneki",
     email: "kaneki.00@gmail.com",
     role: "admin",
     password: "kaneki",
   },
   {
-    id: "usr-creator-01",
+    id: "a0000000-0000-0000-0000-000000000002",
     name: "Alex Rivera",
     email: "creator@clipmatrix.co",
     role: "creator",
     password: "clipmatrix",
   },
   {
-    id: "usr-brand-01",
+    id: "a0000000-0000-0000-0000-000000000003",
     name: "Nova Media",
     email: "brand@clipmatrix.co",
     role: "brand",
     password: "clipmatrix",
   },
   {
-    id: "usr-mod-01",
+    id: "a0000000-0000-0000-0000-000000000004",
     name: "Sam Torres",
     email: "mod@clipmatrix.co",
     role: "moderator",
