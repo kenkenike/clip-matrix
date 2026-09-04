@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Play } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { CheckCircle2, Play, Loader2 } from "lucide-react";
 import type { SocialPlatformName, DetectedPostMetrics } from "@/lib/services/types";
 import { socialPlatformService, creatorService } from "@/lib/services";
 import { Modal } from "@/components/ui/modal";
@@ -62,9 +62,23 @@ function SubmitWizard({
   const [checking, setChecking] = useState(false);
   const [metrics, setMetrics] = useState<DetectedPostMetrics | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
   const { toast } = useToast();
 
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    pollCountRef.current = 0;
+    setScrapeStatus(null);
+  }, []);
+
   const reset = () => {
+    stopPolling();
     setStep(0);
     setPlatform(null);
     setUrl("");
@@ -74,6 +88,7 @@ function SubmitWizard({
   };
 
   const finish = () => {
+    stopPolling();
     toast("Your clip is now being tracked.", "success");
     onClose();
     setTimeout(reset, 200);
@@ -82,6 +97,81 @@ function SubmitWizard({
   const detect = async () => {
     if (!platform) return;
     setChecking(true);
+    setUrlError(undefined);
+
+    // Use real scraper for Instagram
+    if (platform === "instagram") {
+      try {
+        const res = await fetch("/api/instagram/insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setUrlError(data.error ?? "Invalid Instagram URL");
+          setChecking(false);
+          return;
+        }
+
+        // Poll for result
+        setScrapeStatus("Queued...");
+        pollCountRef.current = 0;
+        pollRef.current = setInterval(async () => {
+          pollCountRef.current++;
+          try {
+            const pollRes = await fetch(`/api/instagram/insights/${data.jobId}`);
+            const job = await pollRes.json();
+
+            if (job.status === "completed" && job.result) {
+              stopPolling();
+              const r = job.result;
+              setMetrics({
+                platform: "instagram",
+                views: r.views ?? 0,
+                likes: r.likes ?? 0,
+                comments: r.comments ?? 0,
+                shares: 0,
+                postedAt: r.timestamp ?? new Date().toISOString(),
+                accountHandle: r.username ?? "",
+              });
+              setStep(2);
+              setChecking(false);
+            } else if (job.status === "failed") {
+              stopPolling();
+              setUrlError(job.error ?? "Scrape failed — try again");
+              setChecking(false);
+            } else if (job.status === "rate_limited") {
+              stopPolling();
+              setUrlError("Instagram is rate-limiting. Try again in a few minutes.");
+              setChecking(false);
+            } else {
+              setScrapeStatus(
+                job.status === "running"
+                  ? `Scraping... (attempt ${job.attempts})`
+                  : "Queued..."
+              );
+            }
+
+            if (pollCountRef.current >= 40) {
+              stopPolling();
+              setUrlError("Scrape timed out — try again shortly");
+              setChecking(false);
+            }
+          } catch {
+            stopPolling();
+            setUrlError("Lost connection while scraping");
+            setChecking(false);
+          }
+        }, 1500);
+      } catch {
+        setUrlError("Could not reach scraping server");
+        setChecking(false);
+      }
+      return;
+    }
+
+    // Non-Instagram: use mock detection
     try {
       const valid = await socialPlatformService.validateUrl(url.trim(), platform);
       if (!valid) {
@@ -115,7 +205,7 @@ function SubmitWizard({
       <div className="flex w-full justify-between">
         <button
           type="button"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          onClick={() => { stopPolling(); setStep((s) => Math.max(0, s - 1)); }}
           disabled={submitting || checking || step === 3}
           className="cursor-pointer rounded-xl px-4 py-2 text-sm font-medium text-muted transition-colors hover:text-fg disabled:opacity-50"
         >
@@ -186,10 +276,19 @@ function SubmitWizard({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder={`https://www.${platform ?? "tiktok"}.com/@you/video/...`}
+            disabled={checking}
           />
           <FieldError message={urlError} />
+          {scrapeStatus && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent-dim px-3 py-2.5">
+              <Loader2 className="h-4 w-4 animate-spin text-accent" />
+              <span className="text-xs font-medium text-accent">{scrapeStatus}</span>
+            </div>
+          )}
           <p className="mt-2 text-xs text-faint">
-            We fetch public metrics automatically - no screenshots needed.
+            {platform === "instagram"
+              ? "We scrape public engagement data directly from Instagram — no screenshots needed."
+              : "We fetch public metrics automatically - no screenshots needed."}
           </p>
         </div>
       )}
