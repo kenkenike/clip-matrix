@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/inputs";
 import { useToast } from "@/components/ui/toast";
@@ -9,13 +9,27 @@ import { authService } from "@/lib/services";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const errorMessages: Record<string, string> = {
+  invalid_request: "Invalid request. Please try again.",
+  auth_failed: "Discord authentication failed. Please try again.",
+  access_denied: "You denied Discord access. Please try again.",
+};
+
 export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error && errorMessages[error]) {
+      toast(errorMessages[error], "error");
+    }
+  }, [searchParams, toast]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

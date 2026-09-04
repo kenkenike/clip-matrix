@@ -1,4 +1,5 @@
 import { insforge } from "@/lib/insforge";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import type {
   BrandOverview,
   BrandProfile,
@@ -81,19 +82,13 @@ function mapClip(row: DBRow): Clip {
 }
 
 export class InsforgeBrandService implements BrandService {
-  private getBrandId(): string {
-    if (typeof window === "undefined") return "usr-brand-01";
-    const raw = window.localStorage.getItem("clipmatrix.session");
-    if (!raw) return "usr-brand-01";
-    try {
-      return JSON.parse(raw)?.id ?? "usr-brand-01";
-    } catch {
-      return "usr-brand-01";
-    }
+  private async getBrandId(): Promise<string> {
+    const user = await getCurrentUser();
+    return user?.id ?? "a0000000-0000-0000-0000-000000000003";
   }
 
   async getBrand(): Promise<BrandProfile> {
-    const brandId = this.getBrandId();
+    const brandId = await this.getBrandId();
     const { data } = await insforge.database
       .from("profiles")
       .select()
@@ -179,7 +174,7 @@ export class InsforgeBrandService implements BrandService {
   }
 
   async listBrandCampaigns(): Promise<Campaign[]> {
-    const brandId = this.getBrandId();
+    const brandId = await this.getBrandId();
     const { data, error } = await insforge.database
       .from("campaigns")
       .select()
@@ -220,7 +215,7 @@ export class InsforgeBrandService implements BrandService {
   }
 
   async launchCampaign(input: NewCampaignInput): Promise<Campaign> {
-    const brandId = this.getBrandId();
+    const brandId = await this.getBrandId();
     const brand = await this.getBrand();
     const ends = new Date();
     ends.setDate(ends.getDate() + input.durationDays);

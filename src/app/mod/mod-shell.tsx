@@ -4,8 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Megaphone, HelpCircle } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/shell";
-import { authService } from "@/lib/services";
-import type { SessionUser } from "@/lib/services/auth";
+import { getCurrentUser, clearUserCache } from "@/lib/auth/current-user";
 
 const nav = [
   { href: "/mod", label: "Submissions", icon: ClipboardCheck },
@@ -15,22 +14,25 @@ const nav = [
 
 function ModGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [session, setSession] = useState<SessionUser | null>(null);
+  const [session, setSession] = useState<{ name: string; email: string } | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const current = authService.getSession();
-    if (current && (current.role === "moderator" || current.role === "admin")) {
-      setSession(current);
-    } else {
-      router.replace("/login");
-    }
-    setChecked(true);
+    getCurrentUser().then((u) => {
+      if (u && (u.role === "moderator" || u.role === "admin")) {
+        setSession({ name: u.name, email: u.email });
+      } else {
+        router.replace("/login");
+      }
+      setChecked(true);
+    });
   }, [router]);
 
   const signOut = () => {
-    authService.signOut();
-    router.replace("/login");
+    clearUserCache();
+    fetch("/api/auth/logout", { method: "POST" }).then(() => {
+      router.replace("/login");
+    });
   };
 
   if (!checked || !session) {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   LayoutGrid,
   Compass,
@@ -10,6 +12,8 @@ import {
   Settings,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/shell";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { clearUserCache } from "@/lib/auth/current-user";
 
 const nav = [
   { href: "/dashboard", label: "Overview", icon: LayoutGrid },
@@ -28,13 +32,42 @@ const bottomNav = [
 ];
 
 export function CreatorShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then((u) => {
+      if (u) {
+        setUser({ name: u.name, email: u.email });
+      } else {
+        router.replace("/login");
+      }
+    });
+  }, [router]);
+
+  const signOut = () => {
+    clearUserCache();
+    fetch("/api/auth/logout", { method: "POST" }).then(() => {
+      router.replace("/login");
+    });
+  };
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="animate-pulse text-sm text-muted">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <DashboardShell
       nav={nav}
       bottomNav={bottomNav}
-      userName="Alex Rivera"
-      userHandle="@alexclips"
+      userName={user.name}
+      userHandle={user.email}
       workspaceLabel="Creator"
+      onSignOut={signOut}
     >
       {children}
     </DashboardShell>

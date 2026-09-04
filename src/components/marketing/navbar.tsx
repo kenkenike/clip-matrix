@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
+import { UserMenu } from "@/components/auth/user-menu";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -39,15 +40,7 @@ export function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2.5 lg:flex">
-          <ButtonLink href="/login" variant="ghost" size="sm">
-            Log in
-          </ButtonLink>
-          <ButtonLink href="/brands" variant="secondary" size="sm">
-            Launch Campaign
-          </ButtonLink>
-          <ButtonLink href="/signup" size="sm">
-            Start Creating
-          </ButtonLink>
+          <UserMenu />
         </div>
 
         <button

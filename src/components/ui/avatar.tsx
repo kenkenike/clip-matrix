@@ -4,10 +4,12 @@ export function Avatar({
   name,
   className,
   size = "md",
+  src,
 }: {
   name: string;
   className?: string;
   size?: "xs" | "sm" | "md" | "lg";
+  src?: string | null;
 }) {
   const hue = hueFromString(name);
   const sizes = {
@@ -16,6 +18,20 @@ export function Avatar({
     md: "h-10 w-10 text-sm",
     lg: "h-14 w-14 text-base",
   } as const;
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={cn(
+          "inline-flex shrink-0 rounded-full border border-line object-cover",
+          sizes[size],
+          className
+        )}
+      />
+    );
+  }
 
   return (
     <span

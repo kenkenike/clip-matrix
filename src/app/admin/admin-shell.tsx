@@ -13,8 +13,7 @@ import {
   Settings,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/shell";
-import { authService } from "@/lib/services";
-import type { SessionUser } from "@/lib/services/auth";
+import { getCurrentUser, clearUserCache } from "@/lib/auth/current-user";
 
 const nav = [
   { href: "/admin", label: "Overview", icon: LayoutGrid },
@@ -29,22 +28,25 @@ const nav = [
 
 function AdminGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [session, setSession] = useState<SessionUser | null>(null);
+  const [session, setSession] = useState<{ name: string; email: string } | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const current = authService.getSession();
-    if (current && current.role === "admin") {
-      setSession(current);
-    } else {
-      router.replace("/login");
-    }
-    setChecked(true);
+    getCurrentUser().then((u) => {
+      if (u && (u.role === "admin" || u.role === "moderator")) {
+        setSession({ name: u.name, email: u.email });
+      } else {
+        router.replace("/login");
+      }
+      setChecked(true);
+    });
   }, [router]);
 
   const signOut = () => {
-    authService.signOut();
-    router.replace("/login");
+    clearUserCache();
+    fetch("/api/auth/logout", { method: "POST" }).then(() => {
+      router.replace("/login");
+    });
   };
 
   if (!checked || !session) {

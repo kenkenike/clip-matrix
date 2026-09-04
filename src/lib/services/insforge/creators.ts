@@ -1,4 +1,5 @@
 import { insforge } from "@/lib/insforge";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import type {
   Clip,
   CreatorOverview,
@@ -64,12 +65,13 @@ function mapNotification(row: DBRow): NotificationItem {
 }
 
 export class InsforgeCreatorService implements CreatorService {
+  private async getUserId(): Promise<string> {
+    const user = await getCurrentUser();
+    return user?.id ?? "a0000000-0000-0000-0000-000000000002";
+  }
+
   async getCurrentCreator(): Promise<CreatorProfile> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data, error } = await insforge.database
       .from("profiles")
@@ -135,11 +137,7 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   async getSocialAccounts(): Promise<SocialAccount[]> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data } = await insforge.database
       .from("social_accounts")
@@ -156,11 +154,7 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   async setAccountStatus(platform: SocialPlatformName, status: SocialAccountStatus): Promise<SocialAccount> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data: existing } = await insforge.database
       .from("social_accounts")
@@ -251,11 +245,7 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   async listMyClips(): Promise<Clip[]> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data, error } = await insforge.database
       .from("clips")
@@ -267,12 +257,9 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   async submitClip(input: SubmitClipInput): Promise<Clip> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
-    const userName = session?.name ?? "Creator";
+    const userId = await this.getUserId();
+    const user = await getCurrentUser();
+    const userName = user?.name ?? "Creator";
 
     const { data: campaign } = await insforge.database
       .from("campaigns")
@@ -304,11 +291,7 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   async getNotifications(): Promise<NotificationItem[]> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data } = await insforge.database
       .from("notifications")
@@ -320,11 +303,7 @@ export class InsforgeCreatorService implements CreatorService {
   }
 
   private async listEarnings(): Promise<EarningsEntry[]> {
-    const { data: sessionRaw } = typeof window !== "undefined"
-      ? { data: window.localStorage.getItem("clipmatrix.session") }
-      : { data: null };
-    const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-    const userId = session?.id ?? "usr-creator-01";
+    const userId = await this.getUserId();
 
     const { data } = await insforge.database
       .from("earnings")

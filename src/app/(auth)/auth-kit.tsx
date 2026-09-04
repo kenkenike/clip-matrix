@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input, Label, FieldError } from "@/components/ui/inputs";
 import { useToast } from "@/components/ui/toast";
-import { GoogleIcon, DiscordIcon } from "@/components/icons";
+import { DiscordIcon } from "@/components/icons";
 
 const socialButton =
   "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-line bg-surface-alt px-4 py-2.5 text-sm font-medium text-fg transition-colors hover:bg-white/5";
@@ -31,17 +31,22 @@ export function AuthCard({
 }
 
 export function SocialButtons() {
-  const { toast } = useToast();
-  const note = () => toast("Social sign-in is coming soon.", "info");
+  const [loading, setLoading] = useState(false);
+
+  const handleDiscord = () => {
+    setLoading(true);
+    window.location.href = "/api/auth/discord/login";
+  };
+
   return (
-    <>
-      <button type="button" onClick={note} className={socialButton}>
-        <GoogleIcon className="h-4 w-4" /> Continue with Google
-      </button>
-      <button type="button" onClick={note} className={`${socialButton} mt-2.5`}>
-        <DiscordIcon className="h-4 w-4" /> Continue with Discord
-      </button>
-    </>
+    <button
+      type="button"
+      onClick={handleDiscord}
+      disabled={loading}
+      className={socialButton}
+    >
+      <DiscordIcon className="h-4 w-4" /> {loading ? "Redirecting to Discord..." : "Continue with Discord"}
+    </button>
   );
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   LayoutGrid,
   Megaphone,
@@ -11,6 +13,7 @@ import {
   Settings,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/shell";
+import { getCurrentUser, clearUserCache } from "@/lib/auth/current-user";
 
 const nav = [
   { href: "/brand", label: "Overview", icon: LayoutGrid },
@@ -24,12 +27,41 @@ const nav = [
 ];
 
 export function BrandShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then((u) => {
+      if (u) {
+        setUser({ name: u.name, email: u.email });
+      } else {
+        router.replace("/login");
+      }
+    });
+  }, [router]);
+
+  const signOut = () => {
+    clearUserCache();
+    fetch("/api/auth/logout", { method: "POST" }).then(() => {
+      router.replace("/login");
+    });
+  };
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="animate-pulse text-sm text-muted">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <DashboardShell
       nav={nav}
-      userName="Jordan Blake"
-      userHandle="@northbeam"
+      userName={user.name}
+      userHandle={user.email}
       workspaceLabel="Brand"
+      onSignOut={signOut}
     >
       {children}
     </DashboardShell>

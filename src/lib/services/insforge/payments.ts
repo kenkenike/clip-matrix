@@ -1,4 +1,5 @@
 import { insforge } from "@/lib/insforge";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import type {
   Balances,
   EarningsEntry,
@@ -11,19 +12,13 @@ import type {
 type DBRow = Record<string, any>;
 
 export class InsforgePaymentService implements PaymentService {
-  private getUserId(): string {
-    if (typeof window === "undefined") return "usr-creator-01";
-    const raw = window.localStorage.getItem("clipmatrix.session");
-    if (!raw) return "usr-creator-01";
-    try {
-      return JSON.parse(raw)?.id ?? "usr-creator-01";
-    } catch {
-      return "usr-creator-01";
-    }
+  private async getUserId(): Promise<string> {
+    const user = await getCurrentUser();
+    return user?.id ?? "a0000000-0000-0000-0000-000000000002";
   }
 
   async getBalances(): Promise<Balances> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { data: earnings } = await insforge.database
       .from("earnings")
       .select("amount_minor, status, created_at")
@@ -53,7 +48,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async listTransactions(): Promise<Transaction[]> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { data, error } = await insforge.database
       .from("transactions")
       .select()
@@ -73,7 +68,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async listPayoutMethods(): Promise<PayoutMethod[]> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { data, error } = await insforge.database
       .from("payout_methods")
       .select()
@@ -91,7 +86,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async savePayoutDetails(id: string, fields: Record<string, string>): Promise<PayoutMethod> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { data: existing } = await insforge.database
       .from("payout_methods")
       .select("id")
@@ -139,7 +134,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async setDefaultPayoutMethod(id: string): Promise<void> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     await insforge.database
       .from("payout_methods")
       .update({ is_default: false })
@@ -152,7 +147,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async withdraw(amountMinor: number): Promise<void> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { error } = await insforge.database
       .from("payout_requests")
       .insert([{
@@ -166,7 +161,7 @@ export class InsforgePaymentService implements PaymentService {
   }
 
   async listEarnings(): Promise<EarningsEntry[]> {
-    const userId = this.getUserId();
+    const userId = await this.getUserId();
     const { data, error } = await insforge.database
       .from("earnings")
       .select()

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AuthCard, SocialButtons, Divider } from "@/app/(auth)/auth-kit";
 import { LoginForm } from "@/app/(auth)/login/login-form";
 
@@ -24,7 +25,9 @@ export default function LoginPage() {
     >
       <SocialButtons />
       <Divider label="or" />
-      <LoginForm />
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </AuthCard>
   );
 }

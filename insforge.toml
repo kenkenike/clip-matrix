@@ -1,0 +1,5 @@
+[auth]
+allowedRedirectUrls = [
+  "https://y4fjt9u8.insforge.site/dashboard",
+  "http://localhost:3001/dashboard"
+]
